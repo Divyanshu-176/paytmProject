@@ -1,5 +1,5 @@
 const express = require("express")
-const {User} = require('../db/db')
+const {User, Account} = require('../db/db')
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const z = require("zod")
@@ -50,6 +50,12 @@ userRouter.post("/signup", async (req,res)=>{
         firstName:parsedBody.data.firstName,
         lastName:parsedBody.data.lastName
     })
+    
+    await Account.create({
+        userId:newUser._id,
+        balance : 1+Math.random()*10000
+    })
+
     res.status(200).json({
         msg:"New user Signed Up!"
     })
@@ -118,7 +124,18 @@ const infoSchema = z.object({
 
 userRouter.put("/", authMiddleware,async (req,res)=>{
  
-        const body = req.body
+        const inputbody = req.body
+        if(!inputbody.password){
+            return;
+        }
+        const hashedPassword = await bcrypt.hash(inputbody.password,10)   
+        const body = {
+            password:hashedPassword,
+            firstName:req.body.firstName,
+            lastName:req.body.lastName
+        }
+
+
         const parsedInfo = infoSchema.safeParse(body)
 
         if(!parsedInfo.success){
