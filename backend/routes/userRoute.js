@@ -3,6 +3,7 @@ const {User} = require('../db/db')
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const z = require("zod")
+const { authMiddleware } = require("../middleware/middleware")
 
 const userRouter = express.Router()
 
@@ -106,6 +107,68 @@ userRouter.post("/signin", async (req,res)=>{
             msg:"Internal server error"
         })
     }
+})
+
+
+const infoSchema = z.object({
+    password:z.string().optional(),
+    firstName:z.string().optional(),
+    lastName:z.string().optional()
+})
+
+userRouter.put("/", authMiddleware,async (req,res)=>{
+ 
+        const body = req.body
+        const parsedInfo = infoSchema.safeParse(body)
+
+        if(!parsedInfo.success){
+            return res.status(400).json({
+                msg:"Invalid Input data"
+            })
+        }
+
+        try {
+            await User.updateOne(
+                {_id:req.userId},
+                {$set:parsedInfo.data}
+            )
+
+            res.json({
+                msg:"Updated Successfully"
+            })
+
+        } catch (error) {
+            res.status(400).json({
+                msg:"Internal Server Issue"
+            })
+        }
+
+})
+
+
+userRouter.get("/bulk", authMiddleware, async(req,res)=>{
+    const filter = req.query.filter || "";
+
+    const users = await User.find({
+        $or: [{
+            firstName: {
+                "$regex": filter
+            }
+        }, {
+            lastName: {
+                "$regex": filter
+            }
+        }]
+    })
+
+    res.json({
+        user: users.map(user => ({
+            userName: user.userName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            _id: user._id
+        }))
+    })
 })
 
 module.exports = userRouter

@@ -1,9 +1,16 @@
+const jwt = require("jsonwebtoken")
+
 const authMiddleware = (req,res,next)=>{
-    const token = req.headers.token;
+    const token = req.headers['token'];
+    if(!token){
+        return res.status(401).json({
+            msg:"No Token Provided"
+        })
+    }
 
     try{
         const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        req.user = decoded
+        req.userId = decoded.userId
         next()
     }
     catch(e){
@@ -11,7 +18,6 @@ const authMiddleware = (req,res,next)=>{
             msg:"Not authorized"
         })
     }
-
 }
 
 
