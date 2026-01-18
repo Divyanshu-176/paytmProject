@@ -11,7 +11,7 @@ const userRouter = express.Router()
 
 
 const userZodSchema = z.object({
-    userName:z.string().min(5).max(30).email(),
+    userName:z.string().min(5).max(50).email(),
     password:z.string(),
     firstName:z.string(),
     lastName:z.string()
@@ -70,6 +70,8 @@ userRouter.post("/signup", async (req,res)=>{
         res.status(500).json({
             msg:"Internal Server Error!"
         })
+        console.error(error)
+        console.log('diuh')
     }
 
 
