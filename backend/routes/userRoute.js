@@ -11,12 +11,18 @@ const userRouter = express.Router()
 
 
 const userZodSchema = z.object({
-    userName:z.string().min(5).max(20),
+    userName:z.string().min(5).max(30).email(),
     password:z.string(),
     firstName:z.string(),
     lastName:z.string()
 })
 
+const infoSchema = z.object({
+    password:z.string().optional(),
+    firstName:z.string().optional(),
+    lastName:z.string().optional()
+
+})
 
 userRouter.post("/signup", async (req,res)=>{
 
@@ -116,50 +122,58 @@ userRouter.post("/signin", async (req,res)=>{
 })
 
 
-const infoSchema = z.object({
-    password:z.string().optional(),
-    firstName:z.string().optional(),
-    lastName:z.string().optional()
-})
-
-userRouter.put("/", authMiddleware,async (req,res)=>{
- 
-        const inputbody = req.body
-        if(!inputbody.password){
-            return;
+userRouter.put("/", authMiddleware, async (req, res) => {
+    try {
+        const inputbody = req.body;
+        
+        // Build update object conditionally
+        const updateData = {};
+        
+        // Only hash and add password if it's provided
+        if (inputbody.password) {
+            updateData.password = await bcrypt.hash(inputbody.password, 10);
         }
-        const hashedPassword = await bcrypt.hash(inputbody.password,10)   
-        const body = {
-            password:hashedPassword,
-            firstName:req.body.firstName,
-            lastName:req.body.lastName
+        
+        // Add firstName if provided
+        if (inputbody.firstName !== undefined) {
+            updateData.firstName = inputbody.firstName;
+        }
+        
+        // Add lastName if provided
+        if (inputbody.lastName !== undefined) {
+            updateData.lastName = inputbody.lastName;
         }
 
+        // Validate the update data
+        const parsedInfo = infoSchema.safeParse(updateData);
 
-        const parsedInfo = infoSchema.safeParse(body)
-
-        if(!parsedInfo.success){
+        if (!parsedInfo.success) {
             return res.status(400).json({
-                msg:"Invalid Input data"
-            })
+                msg: "Invalid Input data"
+            });
         }
 
-        try {
-            await User.updateOne(
-                {_id:req.userId},
-                {$set:parsedInfo.data}
-            )
-
-            res.json({
-                msg:"Updated Successfully"
-            })
-
-        } catch (error) {
-            res.status(400).json({
-                msg:"Internal Server Issue"
-            })
+        // Only update if there's something to update
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({
+                msg: "No fields to update"
+            });
         }
 
+        await User.updateOne(
+            { _id: req.userId },
+            { $set: updateData }
+        );
+
+        res.json({
+            msg: "Updated Successfully"
+        });
+
+    } catch (error) {
+        res.status(400).json({
+            msg: "Internal Server Issue"
+        });
+    }
 })
 
 
